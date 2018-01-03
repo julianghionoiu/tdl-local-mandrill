@@ -1,3 +1,3 @@
-# tdl-local-mandrill
+# tdl-local-ses
 
-A Mandrill Server Stub that stores the messages
+A Local SES Server Stub that stores the messages
