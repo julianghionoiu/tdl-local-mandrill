@@ -40,13 +40,13 @@ class MyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         # then s.path equals "/foo/bar/".
         logInfo("You accessed path: %s" % request.path)
         logDebug("Your request looks like: %s" % request)
-        logInfo("You have sent these headers: \n %s" % request.headers)
+        logDebug("You have sent these headers: \n %s" % request.headers)
         emailRequestContent = convertRawHttpRequestDataToString(request)
         emailRequestContentAsDictionary = parse_qs(emailRequestContent)
-        logInfo("You have sent this stream of data to the server (rfile - inputstream): {0}' \n".format(emailRequestContentAsDictionary))
+        logDebug("You have sent this stream of data to the server (rfile - inputstream): {0}' \n".format(emailRequestContentAsDictionary))
 
         emailFrom = emailRequestContentAsDictionary.get('Source')
-        emailTo = emailRequestContentAsDictionary.get('Destination.ToAddresses.member')
+        emailTo = emailRequestContentAsDictionary.get('Destination.ToAddresses.member.1')
         emailSubject = emailRequestContentAsDictionary.get('Message.Subject.Data')
         emailBodyAsHtml = emailRequestContentAsDictionary.get('Message.Body.Html.Data')
         emailBodyAsText = emailRequestContentAsDictionary.get('Message.Body.Text.Data')

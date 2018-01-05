@@ -36,7 +36,7 @@ After sending emails will look like:
    
    Thu Jan  4 18:54:14 2018 [INFO] Email info:
    Thu Jan  4 18:54:14 2018 [INFO]    from: ['sender@example.com']
-   Thu Jan  4 18:54:14 2018 [INFO]    to: None
+   Thu Jan  4 18:54:14 2018 [INFO]    to: ['recipient@example.com']
    Thu Jan  4 18:54:14 2018 [INFO]    subject: ['Amazon SES test (AWS SDK for Java)']
    Thu Jan  4 18:54:14 2018 [INFO]    body (html): ["<h1>Amazon SES test (AWS SDK for Java)</h1><p>This email was sent with <a href='https://aws.amazon.com/ses/'>Amazon SES</a> using the <a href='https://aws.amazon.com/sdk-for-java/'>AWS SDK for Java</a>"]
    Thu Jan  4 18:54:14 2018 [INFO]    body (text): ['This email was sent through Amazon SES using the AWS SDK for Java.']
