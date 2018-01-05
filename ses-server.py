@@ -1,59 +1,114 @@
-import os
-import signal
-import socket
-import subprocess
-import sys
+# See AWS API: https://docs.aws.amazon.com/ses/latest/DeveloperGuide/query-interface-requests.html
+
+# This stub should be able to receive Action=SendEmail calls and should store the messages as files on the file system
+
+# There should also be an endpoint that allows the retrieval of the latest N messages
+
 import time
+import BaseHTTPServer
+import os
+from urlparse import parse_qs
+
+HOST_NAME = 'localhost' # !!!REMEMBER TO CHANGE THIS!!!
+PORT_NUMBER = 8080 # Maybe set this to 9000.
 
 SCRIPT_FOLDER = os.path.dirname(os.path.realpath(__file__))
-CACHE_FOLDER = os.path.join(SCRIPT_FOLDER, ".cache")
+CACHE_FOLDER = os.path.join(SCRIPT_FOLDER, ".emailRepository")
 
-def run(command):
+SENT_EMAIL_RESPONSE = """
+                        <SendEmailResponse xmlns='https://email.amazonaws.com/doc/2010-03-31/'>
+                           <SendEmailResult>
+                               <MessageId>000001271b15238a-fd3ae762-2563-11df-8cd4-6d4e828a9ae8-000000</MessageId>
+                           </SendEmailResult>
+                           <ResponseMetadata>
+                               <RequestId>fd3ae762-2563-11df-8cd4-6d4e828a9ae8</RequestId>
+                           </ResponseMetadata>
+                        </SendEmailResponse>
+                      """
+
+CONFIG_SET_NOT_ALLOWED_RESPONSE = """<ErrorResponse xmlns="http://ses.amazonaws.com/doc/2010-12-01/">
+           <Error>
+               <Type>Sender</Type>
+                   <Code>ConfigurationSetDoesNotExist</Code>
+                   <Message>Configuration set &lt;ConfigSet&gt; does not exist.</Message>
+           </Error>
+           <RequestId>659dd3aa-f235-11e7-8e98-893a4841b6c6</RequestId>
+       </ErrorResponse>"""
+
+# Delete all emails API
+# Retrieve all emails API = list of emails/names of files (name of file = email id)
+# Retrieve content of email by email id
+
+class MyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
+    
+    def do_POST(request):
+        """Respond to a POST request."""
+        # If someone went to "http://something.somewhere.net/foo/bar/",#
+        # then s.path equals "/foo/bar/".
+        logInfo("You accessed path: %s" % request.path)
+        logDebug("Your request looks like: %s" % request)
+        logDebug("You have sent these headers: \n %s" % request.headers)
+        emailRequestContent = convertRawHttpRequestDataToString(request)
+        emailRequestContentAsDictionary = parse_qs(emailRequestContent)
+        logDebug("You have sent this stream of data to the server (rfile - inputstream): {0}' \n".format(emailRequestContentAsDictionary))
+
+        emailFrom = emailRequestContentAsDictionary.get('Source')
+        emailTo = emailRequestContentAsDictionary.get('Destination.ToAddresses.member.1')
+        emailSubject = emailRequestContentAsDictionary.get('Message.Subject.Data')
+        emailBodyAsHtml = emailRequestContentAsDictionary.get('Message.Body.Html.Data')
+        emailBodyAsText = emailRequestContentAsDictionary.get('Message.Body.Text.Data')
+        configureSetsOption = emailRequestContentAsDictionary.get('ConfigurationSetName')
+
+        logInfo("Email info:")
+        logInfo("   from: %s" % emailFrom)
+        logInfo("   to: %s" % emailTo)
+        logInfo("   subject: %s" % emailSubject)
+        logInfo("   body (html): %s" % emailBodyAsHtml)
+        logInfo("   body (text): %s" % emailBodyAsText)
+
+        if configureSetsOption is not None and configureSetsOption != "":
+            sendFailureDueToConfigSetNotAllowed(request)
+        else:
+            sendSuccessEmailSentResponse(request)
+            request.wfile.write(SENT_EMAIL_RESPONSE)
+
+def convertRawHttpRequestDataToString(request):
+    contentLength = int(request.headers.getheader('content-length'))
+    return request.rfile.read(contentLength)
+
+def sendSuccessEmailSentResponse(request):
+    request.send_response(200)
+    request.send_header('Content-type', 'text/xml')
+    request.end_headers()
+
+def sendFailureDueToConfigSetNotAllowed(request):
+    request.send_response(400)
+    request.send_header('Content-type', 'text/xml')
+    request.send_header('x-amzn-RequestId', '707ad34a-f237-11e7-8d01-bd95e22571c1')
+    request.send_header('Content-Length', '310')
+    request.end_headers()
+
+    request.wfile.write(CONFIG_SET_NOT_ALLOWED_RESPONSE)
+
+def logDebug(message):
+    log("[DEBUG] " + message)
+
+def logInfo(message):
+    log("[INFO] " + message)
+
+def log(message):
+    print time.asctime(), message
+
+if __name__ == '__main__':
     if not os.path.exists(CACHE_FOLDER):
         os.mkdir(CACHE_FOLDER)
 
-    port = 8080
-    python_file = 'the-ses-server.py'
-    pid_file = os.path.join(CACHE_FOLDER, "pid-" + str(port))
-
-    if command == "start":
-        run_python(python_file, port, pid_file)
-        wait_until_port_is_open(port, 5)
-    elif command == "stop":
-        kill_process(pid_file)
-
-
-def run_python(python_path, port, pid_file):
-    proc = subprocess.Popen(["python", python_path, str(port), "&",], cwd=SCRIPT_FOLDER)
-    f = open(pid_file, "w")
-    f.write(str(proc.pid))
-    f.close()
-
-
-def wait_until_port_is_open(port, delay):
-    n = 0
-    while n < 5:
-        print "Is application listening on port " + str(port) + "? "
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        result = sock.connect_ex(('127.0.0.1', port))
-        if result == 0:
-            print "Yes"
-            return
-        print "No. Retrying in " + str(delay) + " seconds"
-        n = n + 1
-        time.sleep(delay)
-
-
-def kill_process(pid_file):
-    f = open(pid_file, "r")
+    server_class = BaseHTTPServer.HTTPServer
+    httpd = server_class((HOST_NAME, PORT_NUMBER), MyHandler)
+    logInfo("Server Starts - %s:%s" % (HOST_NAME, PORT_NUMBER))
     try:
-        pid_str = f.read()
-        print "Kill process with pid: " + pid_str
-        os.kill(int(pid_str), signal.SIGTERM)
-    except Exception:
-        f.close()
-        os.remove(pid_file)
-
-
-if __name__ == "__main__":
-    run(sys.argv[1])
+            httpd.serve_forever()
+    except KeyboardInterrupt:
+        pass
+    httpd.server_close()
+    logInfo("Server Stops - %s:%s" % (HOST_NAME, PORT_NUMBER))
