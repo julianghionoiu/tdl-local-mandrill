@@ -12,7 +12,7 @@ def run(command):
     if not os.path.exists(CACHE_FOLDER):
         os.mkdir(CACHE_FOLDER)
 
-    port = 8080
+    port = 9555
     python_file = 'ses-server.py'
     pid_file = os.path.join(CACHE_FOLDER, "pid-" + str(port))
 
