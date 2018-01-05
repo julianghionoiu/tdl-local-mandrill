@@ -26,6 +26,15 @@ SENT_EMAIL_RESPONSE = """
                         </SendEmailResponse>
                       """
 
+CONFIG_SET_NOT_ALLOWED_RESPONSE = """<ErrorResponse xmlns="http://ses.amazonaws.com/doc/2010-12-01/">
+           <Error>
+               <Type>Sender</Type>
+                   <Code>ConfigurationSetDoesNotExist</Code>
+                   <Message>Configuration set &lt;ConfigSet&gt; does not exist.</Message>
+           </Error>
+           <RequestId>659dd3aa-f235-11e7-8e98-893a4841b6c6</RequestId>
+       </ErrorResponse>"""
+
 # Delete all emails API
 # Retrieve all emails API = list of emails/names of files (name of file = email id)
 # Retrieve content of email by email id
@@ -57,25 +66,29 @@ class MyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         logInfo("   body (html): %s" % emailBodyAsHtml)
         logInfo("   body (text): %s" % emailBodyAsText)
 
-        if configureSetsOption is None or configureSetsOption == "":
-            sendSuccessInHeaderResponse(request)
-            request.wfile.write(SENT_EMAIL_RESPONSE)
+        if configureSetsOption is not None and configureSetsOption != "":
+            sendFailureDueToConfigSetNotAllowed(request)
         else:
-            sendFailureInHeaderResponse(request)
-    
+            sendSuccessEmailSentResponse(request)
+            request.wfile.write(SENT_EMAIL_RESPONSE)
+
 def convertRawHttpRequestDataToString(request):
     contentLength = int(request.headers.getheader('content-length'))
     return request.rfile.read(contentLength)
 
-def sendSuccessInHeaderResponse(request):
+def sendSuccessEmailSentResponse(request):
     request.send_response(200)
-    request.send_header('Content-type', 'text/html')
+    request.send_header('Content-type', 'text/xml')
     request.end_headers()
 
-def sendFailureInHeaderResponse(request):
+def sendFailureDueToConfigSetNotAllowed(request):
     request.send_response(400)
-    request.send_header('Content-type', 'text/html')
+    request.send_header('Content-type', 'text/xml')
+    request.send_header('x-amzn-RequestId', '707ad34a-f237-11e7-8d01-bd95e22571c1')
+    request.send_header('Content-Length', '310')
     request.end_headers()
+
+    request.wfile.write(CONFIG_SET_NOT_ALLOWED_RESPONSE)
 
 def logDebug(message):
     log("[DEBUG] " + message)
