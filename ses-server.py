@@ -10,7 +10,7 @@ import os
 from urlparse import parse_qs
 
 HOST_NAME = 'localhost' # !!!REMEMBER TO CHANGE THIS!!!
-PORT_NUMBER = 8080 # Maybe set this to 9000.
+PORT_NUMBER = 9555 # Maybe set this to 9000.
 
 SCRIPT_FOLDER = os.path.dirname(os.path.realpath(__file__))
 CACHE_FOLDER = os.path.join(SCRIPT_FOLDER, ".emailRepository")
