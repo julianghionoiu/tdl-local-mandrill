@@ -34,8 +34,6 @@ class MyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
     
     def do_POST(request):
         """Respond to a POST request."""
-        sendHeaderResponse(request)
-
         # If someone went to "http://something.somewhere.net/foo/bar/",#
         # then s.path equals "/foo/bar/".
         logInfo("You accessed path: %s" % request.path)
@@ -50,6 +48,7 @@ class MyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         emailSubject = emailRequestContentAsDictionary.get('Message.Subject.Data')
         emailBodyAsHtml = emailRequestContentAsDictionary.get('Message.Body.Html.Data')
         emailBodyAsText = emailRequestContentAsDictionary.get('Message.Body.Text.Data')
+        configureSetsOption = emailRequestContentAsDictionary.get('ConfigurationSetName')
 
         logInfo("Email info:")
         logInfo("   from: %s" % emailFrom)
@@ -57,15 +56,24 @@ class MyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         logInfo("   subject: %s" % emailSubject)
         logInfo("   body (html): %s" % emailBodyAsHtml)
         logInfo("   body (text): %s" % emailBodyAsText)
-        
-        request.wfile.write(SENT_EMAIL_RESPONSE)
-                                                    
+
+        if configureSetsOption is None or configureSetsOption == "":
+            sendSuccessInHeaderResponse(request)
+            request.wfile.write(SENT_EMAIL_RESPONSE)
+        else:
+            sendFailureInHeaderResponse(request)
+    
 def convertRawHttpRequestDataToString(request):
     contentLength = int(request.headers.getheader('content-length'))
     return request.rfile.read(contentLength)
 
-def sendHeaderResponse(request):
+def sendSuccessInHeaderResponse(request):
     request.send_response(200)
+    request.send_header('Content-type', 'text/html')
+    request.end_headers()
+
+def sendFailureInHeaderResponse(request):
+    request.send_response(400)
     request.send_header('Content-type', 'text/html')
     request.end_headers()
 
