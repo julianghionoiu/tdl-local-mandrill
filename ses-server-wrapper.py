@@ -17,8 +17,9 @@ def run(command):
     pid_file = os.path.join(CACHE_FOLDER, "pid-" + str(port))
 
     if command == "start":
-        run_python(python_file, port, pid_file)
+        pid = run_python(python_file, port, pid_file)
         wait_until_port_is_open(port, 5)
+        print "Process running as pid: " + str(pid)
     elif command == "stop":
         kill_process(pid_file)
 
@@ -28,6 +29,7 @@ def run_python(python_path, port, pid_file):
     f = open(pid_file, "w")
     f.write(str(proc.pid))
     f.close()
+    return proc.pid
 
 
 def wait_until_port_is_open(port, delay):

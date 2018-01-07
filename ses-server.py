@@ -40,37 +40,72 @@ CONFIG_SET_NOT_ALLOWED_RESPONSE = """<ErrorResponse xmlns="http://ses.amazonaws.
 # Retrieve content of email by email id
 
 class MyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
-    
+
     def do_POST(request):
         """Respond to a POST request."""
-        # If someone went to "http://something.somewhere.net/foo/bar/",#
-        # then s.path equals "/foo/bar/".
-        logInfo("You accessed path: %s" % request.path)
-        logDebug("Your request looks like: %s" % request)
-        logDebug("You have sent these headers: \n %s" % request.headers)
-        emailRequestContent = convertRawHttpRequestDataToString(request)
-        emailRequestContentAsDictionary = parse_qs(emailRequestContent)
-        logDebug("You have sent this stream of data to the server (rfile - inputstream): {0}' \n".format(emailRequestContentAsDictionary))
+        emailRequestRawContent = convertRawHttpRequestDataToString(request)
+        emailRequestContentAsDictionary = parse_qs(emailRequestRawContent)
 
-        emailFrom = emailRequestContentAsDictionary.get('Source')
-        emailTo = emailRequestContentAsDictionary.get('Destination.ToAddresses.member.1')
-        emailSubject = emailRequestContentAsDictionary.get('Message.Subject.Data')
-        emailBodyAsHtml = emailRequestContentAsDictionary.get('Message.Body.Html.Data')
-        emailBodyAsText = emailRequestContentAsDictionary.get('Message.Body.Text.Data')
-        configureSetsOption = emailRequestContentAsDictionary.get('ConfigurationSetName')
+        displayRawRequestDetailsOnTheConsole(request, emailRequestContentAsDictionary)
 
-        logInfo("Email info:")
-        logInfo("   from: %s" % emailFrom)
-        logInfo("   to: %s" % emailTo)
-        logInfo("   subject: %s" % emailSubject)
-        logInfo("   body (html): %s" % emailBodyAsHtml)
-        logInfo("   body (text): %s" % emailBodyAsText)
+        displayReleventEmailDetailsOnTheConsole(emailRequestContentAsDictionary)
 
-        if configureSetsOption is not None and configureSetsOption != "":
-            sendFailureDueToConfigSetNotAllowed(request)
-        else:
-            sendSuccessEmailSentResponse(request)
-            request.wfile.write(SENT_EMAIL_RESPONSE)
+        writeEmailReceivedToDisk(getUniqueRecordId(emailRequestContentAsDictionary), emailRequestRawContent)
+
+        sendBackResponseToClient(request, emailRequestContentAsDictionary.get('ConfigurationSetName'))
+
+
+def sendBackResponseToClient(request, configureSetsOption):
+    if configureSetsOption is not None and configureSetsOption != "":
+        sendFailureDueToConfigSetNotAllowed(request)
+    else:
+        sendSuccessEmailSentResponse(request)
+        request.wfile.write(SENT_EMAIL_RESPONSE)
+
+
+def displayReleventEmailDetailsOnTheConsole(emailRequestContentAsDictionary):
+    emailFrom = emailRequestContentAsDictionary.get('Source')
+    emailTo = emailRequestContentAsDictionary.get('Destination.ToAddresses.member.1')
+    emailSubject = emailRequestContentAsDictionary.get('Message.Subject.Data')
+    emailBodyAsHtml = emailRequestContentAsDictionary.get('Message.Body.Html.Data')
+    emailBodyAsText = emailRequestContentAsDictionary.get('Message.Body.Text.Data')
+
+    logInfo("Email info:")
+    logInfo("   from: %s" % emailFrom)
+    logInfo("   to: %s" % emailTo)
+    logInfo("   subject: %s" % emailSubject)
+    logInfo("   body (html): %s" % emailBodyAsHtml)
+    logInfo("   body (text): %s" % emailBodyAsText)
+
+
+def writeEmailReceivedToDisk(uniqueRecordId, emailRequestContent):
+    logInfo("Writing email to disk")
+    logInfo("Unique record id: " + uniqueRecordId)
+
+    emailFileName = '{0}/{1}.eml'.format(CACHE_FOLDER, uniqueRecordId)
+    emailFile = open(emailFileName, 'w')
+    emailFile.write(emailRequestContent)
+    emailFile.close()
+
+    logInfo("Email has been successfully saved at " + emailFileName)
+
+
+def getUniqueRecordId(emailRequestContentAsDictionary):
+    emailFrom = emailRequestContentAsDictionary.get('Source')
+    emailTo = emailRequestContentAsDictionary.get('Destination.ToAddresses.member.1')
+
+    newIndex = len(os.listdir(CACHE_FOLDER)) + 1
+    return "{0: #04d}-{1}-{2}".format(newIndex, emailFrom[0], emailTo[0])
+
+
+def displayRawRequestDetailsOnTheConsole(request, emailRequestContentAsDictionary):
+    logInfo("You accessed path: %s" % request.path)
+    logDebug("Your request looks like: %s" % request)
+    logDebug("You have sent these headers: \n %s" % request.headers)
+     
+    logDebug("You have sent this stream of data to the server (rfile - inputstream): {0}' \n"
+             .format(emailRequestContentAsDictionary))
+
 
 def convertRawHttpRequestDataToString(request):
     contentLength = int(request.headers.getheader('content-length'))
