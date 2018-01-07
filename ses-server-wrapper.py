@@ -7,6 +7,7 @@ import time
 
 SCRIPT_FOLDER = os.path.dirname(os.path.realpath(__file__))
 CACHE_FOLDER = os.path.join(SCRIPT_FOLDER, ".cache")
+FIVE_SECONDS_DELAY = 5
 
 def run(command):
     if not os.path.exists(CACHE_FOLDER):
@@ -16,12 +17,19 @@ def run(command):
     python_file = 'ses-server.py'
     pid_file = os.path.join(CACHE_FOLDER, "pid-" + str(port))
 
-    if command == "start":
-        pid = run_python(python_file, port, pid_file)
-        wait_until_port_is_open(port, 5)
-        print "Process running as pid: " + str(pid)
+    if command == "restart":
+        kill_process(pid_file)
+        runPythonScript(pid_file, port, python_file)
+    elif command == "start":
+        runPythonScript(pid_file, port, python_file)
     elif command == "stop":
         kill_process(pid_file)
+
+
+def runPythonScript(pid_file, port, python_file):
+    pid = run_python(python_file, port, pid_file)
+    wait_until_port_is_open(port, FIVE_SECONDS_DELAY)
+    print "Process running as pid: " + str(pid)
 
 
 def run_python(python_path, port, pid_file):
@@ -34,7 +42,7 @@ def run_python(python_path, port, pid_file):
 
 def wait_until_port_is_open(port, delay):
     n = 0
-    while n < 5:
+    while n < delay:
         print "Is application listening on port " + str(port) + "? "
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         result = sock.connect_ex(('127.0.0.1', port))
