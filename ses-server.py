@@ -76,6 +76,11 @@ class MyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
         parsedURL = urlparse(request.path)
 
+        if parsedURL.path == "/health":
+            logInfo("Sending health check response to client...")
+            sendSuccessfulResponse(request)
+            logInfo("...finished sending.")
+
         if parsedURL.path == "/mails":
             sendListOfEmailIdsToClient(request)
 
