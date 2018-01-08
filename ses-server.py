@@ -134,7 +134,6 @@ def getEmailContentFor(emailId):
         file = open(emailFilename, 'r')
     except IOError as error:
         logError("Error reading file {0}: {1}".format(emailFilename, error))
-        logError("Error reading file: " + emailFilename)
         logError("Closing file and aborting...")
         file.close()
 
