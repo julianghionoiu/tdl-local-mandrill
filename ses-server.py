@@ -7,6 +7,9 @@
 import time
 import BaseHTTPServer
 import os
+import glob
+
+from __builtin__ import list
 from urlparse import parse_qs
 from urlparse import urlparse
 
@@ -27,20 +30,49 @@ SENT_EMAIL_RESPONSE = """
                         </SendEmailResponse>
                       """
 
-CONFIG_SET_NOT_ALLOWED_RESPONSE = """<ErrorResponse xmlns="http://ses.amazonaws.com/doc/2010-12-01/">
-           <Error>
-               <Type>Sender</Type>
-                   <Code>ConfigurationSetDoesNotExist</Code>
-                   <Message>Configuration set &lt;ConfigSet&gt; does not exist.</Message>
-           </Error>
-           <RequestId>659dd3aa-f235-11e7-8e98-893a4841b6c6</RequestId>
-       </ErrorResponse>"""
+CONFIG_SET_NOT_ALLOWED_RESPONSE = """
+                            <ErrorResponse xmlns="http://ses.amazonaws.com/doc/2010-12-01/">
+                               <Error>
+                                   <Type>Sender</Type>
+                                       <Code>ConfigurationSetDoesNotExist</Code>
+                                       <Message>Configuration set &lt;ConfigSet&gt; does not exist.</Message>
+                               </Error>
+                               <RequestId>659dd3aa-f235-11e7-8e98-893a4841b6c6</RequestId>
+                            </ErrorResponse>
+                       """
 
 # Delete all emails API
 # Retrieve all emails API = list of emails/names of files (name of file = email id)
 # Retrieve content of email by email id
 
 class MyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
+
+    def do_DELETE(request):
+        """Respond to a DELETE request."""
+        displayRawRequestDetailsOnTheConsole(request)
+
+        parsedURL = urlparse(request.path)
+        if parsedURL.path == "/deleteAllEmails":
+            logInfo("Attempting to delete all emails...")
+
+            logInfo("Fetching all emails.")
+            allEmailsAsFiles = glob.glob(CACHE_FOLDER + '/*')
+
+            logInfo("Deleting all emails.")
+            emailIds=list()
+            for emailAsFile in allEmailsAsFiles:
+                os.remove(emailAsFile)
+                emailId = os.path.basename(emailAsFile)
+                emailIds.append(emailId)
+
+            if len(emailIds) == 0:
+                logInfo("No emails to delete.")
+            else:
+                logInfo("Deleted emails: " + str(emailIds))
+
+            sendSuccessfulResponse(request)
+
+            logInfo("...finished deleting all emails.")
 
     def do_GET(request):
         """Respond to a GET request."""
@@ -70,6 +102,7 @@ class MyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         writeEmailReceivedToDisk(getUniqueRecordId(emailRequestContentAsDictionary), emailRequestRawContent)
 
         sendBackResponseToClient(request, emailRequestContentAsDictionary.get('ConfigurationSetName'))
+
 
 def sendBackResponseToClient(request, configureSetsOption):
     if configureSetsOption is not None and configureSetsOption != "":
@@ -108,6 +141,7 @@ def sendListOfMailIdsToClient(request):
     emailIds = getListOfEmailIdsFromRespository()
     logInfo("Sending client list of email ids " + str(emailIds))
     request.wfile.write(emailIds)
+    sendSuccessfulResponse(request)
     logInfo("Finished sending.")
 
 
@@ -119,6 +153,7 @@ def sendEmailByIdToClient(request, parsedURL):
     logInfo("Sending client email contents for emailId: " + emailId)
     logDebug("Email content: " + str(emailContent))
     request.wfile.write(emailContent)
+    sendSuccessfulResponse(request)
     logInfo("Finished sending.")
 
 
@@ -151,10 +186,10 @@ def displayRawRequestDetailsOnTheConsole(request):
     logDebug("You have sent these headers: \n%s" % request.headers)
 
 
-
 def convertRawHttpRequestDataToString(request):
     contentLength = int(request.headers.getheader('content-length'))
     return request.rfile.read(contentLength)
+
 
 def sendSuccessfulResponse(request):
     request.send_response(200)
