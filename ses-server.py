@@ -77,7 +77,7 @@ class MyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         parsedURL = urlparse(request.path)
 
         if parsedURL.path == "/mails":
-            sendListOfMailIdsToClient(request)
+            sendListOfEmailIdsToClient(request)
 
         if parsedURL.path == "/get/mail":
             sendEmailByIdToClient(request, parsedURL)
@@ -125,7 +125,27 @@ def displayReleventEmailDetailsOnTheConsole(emailRequestContentAsDictionary):
 
 
 def getEmailContentFor(emailId):
-    return ['Action=SendEmail&Version=2010-12-01&Source=localtest%40exocode.co.uk&Destination.ToAddresses.member.1=recipient%40example.com&Message.Subject.Data=Amazon+SES+test+%28AWS+SDK+for+Java%29&Message.Subject.Charset=UTF-8&Message.Body.Text.Data=This+email+was+sent+through+Amazon+SES+using+the+AWS+SDK+for+Java.&Message.Body.Text.Charset=UTF-8&Message.Body.Html.Data=%3Ch1%3EAmazon+SES+test+%28AWS+SDK+for+Java%29%3C%2Fh1%3E%3Cp%3EThis+email+was+sent+with+%3Ca+href%3D%27https%3A%2F%2Faws.amazon.com%2Fses%2F%27%3EAmazon+SES%3C%2Fa%3E+using+the+%3Ca+href%3D%27https%3A%2F%2Faws.amazon.com%2Fsdk-for-java%2F%27%3EAWS+SDK+for+Java%3C%2Fa%3E&Message.Body.Html.Charset=UTF-8']
+    global file
+
+    logInfo("Converting emailId to filename")
+    emailFilename = "{0}/{1}{2}".format(CACHE_FOLDER, emailId, ".eml")
+
+    try:
+        file = open(emailFilename, 'r')
+    except IOError as error:
+        logError("Error reading file {0}: {1}".format(emailFilename, error))
+        logError("Error reading file: " + emailFilename)
+        logError("Closing file and aborting...")
+        file.close()
+
+        return None
+    else:
+        emailContent = file.read()
+        logInfo("Fetching email content from file: " + emailFilename)
+        logDebug("Email contains: " + emailContent)
+        file.close()
+        logInfo("...finished sending email content.")
+        return emailContent
 
 
 def getListOfEmailIdsFromRespository():
@@ -141,26 +161,26 @@ def getListOfEmailIdsFromRespository():
     return emailIds
 
 
-def sendListOfMailIdsToClient(request):
+def sendListOfEmailIdsToClient(request):
     sendSuccessfulResponse(request)
     emailIds = getListOfEmailIdsFromRespository()
     logInfo("Sending client list of email ids " + str(emailIds))
     request.wfile.write(emailIds)
-    sendSuccessfulResponse(request)
     logInfo("Finished sending.")
 
 
 def sendEmailByIdToClient(request, parsedURL):
+    sendSuccessfulResponse(request)
     queryString = parse_qs(parsedURL.query)
     emailId = queryString.get('emailId')[0]
     emailContent = getEmailContentFor(emailId)
-    sendSuccessfulResponse(request)
-    logInfo("Sending client email contents for emailId: " + emailId)
-    logDebug("Email content: " + str(emailContent))
-    request.wfile.write(emailContent)
-    sendSuccessfulResponse(request)
-    logInfo("Finished sending.")
-
+    if emailContent is None:
+        logInfo("No email contents sent for emailId" + emailId)
+    else:
+        logInfo("Sending client email contents for emailId: " + emailId)
+        logDebug("Email content: " + str(emailContent))
+        request.wfile.write("[{0}]".format(emailContent))
+        logInfo("Finished sending.")
 
 def writeEmailReceivedToDisk(uniqueRecordId, emailRequestContent):
     logInfo("Writing email to disk")
@@ -212,6 +232,9 @@ def sendFailureDueToConfigSetNotAllowed(request):
 
 def logDebug(message):
     log("[DEBUG] " + message)
+
+def logError(message):
+    log("[ERROR] " + message)
 
 def logInfo(message):
     log("[INFO] " + message)
