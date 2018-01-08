@@ -8,6 +8,7 @@ import time
 import BaseHTTPServer
 import os
 from urlparse import parse_qs
+from urlparse import urlparse
 
 HOST_NAME = 'localhost' # !!!REMEMBER TO CHANGE THIS!!!
 PORT_NUMBER = 9555 # Maybe set this to 9000.
@@ -43,16 +44,26 @@ class MyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
     def do_GET(request):
         """Respond to a GET request."""
-        sendSuccessfulResponse(request)
-        request.wfile.write(getListOfEmailsFromRespository())
+        displayRawRequestDetailsOnTheConsole(request)
+
+        parsedURL = urlparse(request.path)
+
+        if parsedURL.path == "/mails":
+            sendListOfMailIdsToClient(request)
+
+        if parsedURL.path == "/get/mail":
+            sendEmailByIdToClient(request, parsedURL)
 
 
     def do_POST(request):
         """Respond to a POST request."""
+        displayRawRequestDetailsOnTheConsole(request)
+
         emailRequestRawContent = convertRawHttpRequestDataToString(request)
         emailRequestContentAsDictionary = parse_qs(emailRequestRawContent)
 
-        displayRawRequestDetailsOnTheConsole(request, emailRequestContentAsDictionary)
+        logDebug("You have sent this stream of data to the server (rfile - inputstream): {0}' \n"
+                 .format(emailRequestContentAsDictionary))
 
         displayReleventEmailDetailsOnTheConsole(emailRequestContentAsDictionary)
 
@@ -60,15 +71,13 @@ class MyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
         sendBackResponseToClient(request, emailRequestContentAsDictionary.get('ConfigurationSetName'))
 
-def getListOfEmailsFromRespository():
-    return ['001-xx@b.com', '002-bb@c.com']
-
 def sendBackResponseToClient(request, configureSetsOption):
     if configureSetsOption is not None and configureSetsOption != "":
         sendFailureDueToConfigSetNotAllowed(request)
     else:
         sendSuccessfulResponse(request)
         request.wfile.write(SENT_EMAIL_RESPONSE)
+        logInfo("Finished sending.")
 
 
 def displayReleventEmailDetailsOnTheConsole(emailRequestContentAsDictionary):
@@ -84,6 +93,33 @@ def displayReleventEmailDetailsOnTheConsole(emailRequestContentAsDictionary):
     logInfo("   subject: %s" % emailSubject)
     logInfo("   body (html): %s" % emailBodyAsHtml)
     logInfo("   body (text): %s" % emailBodyAsText)
+
+
+def getEmailContentFor(emailId):
+    return ['Action=SendEmail&Version=2010-12-01&Source=localtest%40exocode.co.uk&Destination.ToAddresses.member.1=recipient%40example.com&Message.Subject.Data=Amazon+SES+test+%28AWS+SDK+for+Java%29&Message.Subject.Charset=UTF-8&Message.Body.Text.Data=This+email+was+sent+through+Amazon+SES+using+the+AWS+SDK+for+Java.&Message.Body.Text.Charset=UTF-8&Message.Body.Html.Data=%3Ch1%3EAmazon+SES+test+%28AWS+SDK+for+Java%29%3C%2Fh1%3E%3Cp%3EThis+email+was+sent+with+%3Ca+href%3D%27https%3A%2F%2Faws.amazon.com%2Fses%2F%27%3EAmazon+SES%3C%2Fa%3E+using+the+%3Ca+href%3D%27https%3A%2F%2Faws.amazon.com%2Fsdk-for-java%2F%27%3EAWS+SDK+for+Java%3C%2Fa%3E&Message.Body.Html.Charset=UTF-8']
+
+
+def getListOfEmailIdsFromRespository():
+    return ['001-xx@b.com', '002-bb@c.com']
+
+
+def sendListOfMailIdsToClient(request):
+    sendSuccessfulResponse(request)
+    emailIds = getListOfEmailIdsFromRespository()
+    logInfo("Sending client list of email ids " + str(emailIds))
+    request.wfile.write(emailIds)
+    logInfo("Finished sending.")
+
+
+def sendEmailByIdToClient(request, parsedURL):
+    queryString = parse_qs(parsedURL.query)
+    emailId = queryString.get('emailId')[0]
+    emailContent = getEmailContentFor(emailId)
+    sendSuccessfulResponse(request)
+    logInfo("Sending client email contents for emailId: " + emailId)
+    logDebug("Email content: " + str(emailContent))
+    request.wfile.write(emailContent)
+    logInfo("Finished sending.")
 
 
 def writeEmailReceivedToDisk(uniqueRecordId, emailRequestContent):
@@ -106,13 +142,14 @@ def getUniqueRecordId(emailRequestContentAsDictionary):
     return "{0: #04d}-{1}-{2}".format(newIndex, emailFrom[0], emailTo[0])
 
 
-def displayRawRequestDetailsOnTheConsole(request, emailRequestContentAsDictionary):
-    logInfo("You accessed path: %s" % request.path)
+def displayRawRequestDetailsOnTheConsole(request):
     logDebug("Your request looks like: %s" % request)
-    logDebug("You have sent these headers: \n %s" % request.headers)
-     
-    logDebug("You have sent this stream of data to the server (rfile - inputstream): {0}' \n"
-             .format(emailRequestContentAsDictionary))
+    
+    parsedURL = urlparse(request.path)
+    logDebug("You accessed path: %s" % parsedURL.path)
+    logDebug("You have sent this query string: %s" % parsedURL.query)
+    logDebug("You have sent these headers: \n%s" % request.headers)
+
 
 
 def convertRawHttpRequestDataToString(request):
