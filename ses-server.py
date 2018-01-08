@@ -41,10 +41,6 @@ CONFIG_SET_NOT_ALLOWED_RESPONSE = """
                             </ErrorResponse>
                        """
 
-# Delete all emails API
-# Retrieve all emails API = list of emails/names of files (name of file = email id)
-# Retrieve content of email by email id
-
 class MyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
     def do_DELETE(request):
@@ -62,7 +58,7 @@ class MyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             emailIds=list()
             for emailAsFile in allEmailsAsFiles:
                 os.remove(emailAsFile)
-                emailId = os.path.basename(emailAsFile)
+                emailId = os.path.splitext(os.path.basename(emailAsFile))[0]
                 emailIds.append(emailId)
 
             if len(emailIds) == 0:
@@ -133,7 +129,16 @@ def getEmailContentFor(emailId):
 
 
 def getListOfEmailIdsFromRespository():
-    return ['001-xx@b.com', '002-bb@c.com']
+    logInfo("Fetching all emails.")
+    allEmailsAsFiles = glob.glob(CACHE_FOLDER + '/*')
+
+    logInfo("Building list a list of emaild ids.")
+    emailIds=list()
+    for emailAsFile in allEmailsAsFiles:
+        emailId = os.path.splitext(os.path.basename(emailAsFile))[0].strip(" ")
+        emailIds.append(emailId)
+
+    return emailIds
 
 
 def sendListOfMailIdsToClient(request):
