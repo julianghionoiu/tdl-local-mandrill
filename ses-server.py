@@ -7,6 +7,9 @@
 import time
 import BaseHTTPServer
 import os
+import glob
+
+from __builtin__ import list
 from urlparse import parse_qs
 from urlparse import urlparse
 
@@ -27,20 +30,45 @@ SENT_EMAIL_RESPONSE = """
                         </SendEmailResponse>
                       """
 
-CONFIG_SET_NOT_ALLOWED_RESPONSE = """<ErrorResponse xmlns="http://ses.amazonaws.com/doc/2010-12-01/">
-           <Error>
-               <Type>Sender</Type>
-                   <Code>ConfigurationSetDoesNotExist</Code>
-                   <Message>Configuration set &lt;ConfigSet&gt; does not exist.</Message>
-           </Error>
-           <RequestId>659dd3aa-f235-11e7-8e98-893a4841b6c6</RequestId>
-       </ErrorResponse>"""
-
-# Delete all emails API
-# Retrieve all emails API = list of emails/names of files (name of file = email id)
-# Retrieve content of email by email id
+CONFIG_SET_NOT_ALLOWED_RESPONSE = """
+                            <ErrorResponse xmlns="http://ses.amazonaws.com/doc/2010-12-01/">
+                               <Error>
+                                   <Type>Sender</Type>
+                                       <Code>ConfigurationSetDoesNotExist</Code>
+                                       <Message>Configuration set &lt;ConfigSet&gt; does not exist.</Message>
+                               </Error>
+                               <RequestId>659dd3aa-f235-11e7-8e98-893a4841b6c6</RequestId>
+                            </ErrorResponse>
+                       """
 
 class MyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
+
+    def do_DELETE(request):
+        """Respond to a DELETE request."""
+        displayRawRequestDetailsOnTheConsole(request)
+
+        parsedURL = urlparse(request.path)
+        if parsedURL.path == "/deleteAllEmails":
+            logInfo("Attempting to delete all emails...")
+
+            logInfo("Fetching all emails.")
+            allEmailsAsFiles = glob.glob(CACHE_FOLDER + '/*')
+
+            logInfo("Deleting all emails.")
+            emailIds=list()
+            for emailAsFile in allEmailsAsFiles:
+                os.remove(emailAsFile)
+                emailId = os.path.splitext(os.path.basename(emailAsFile))[0]
+                emailIds.append(emailId)
+
+            if len(emailIds) == 0:
+                logInfo("No emails to delete.")
+            else:
+                logInfo("Deleted emails: " + str(emailIds))
+
+            sendSuccessfulResponse(request)
+
+            logInfo("...finished deleting all emails.")
 
     def do_GET(request):
         """Respond to a GET request."""
@@ -49,7 +77,7 @@ class MyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         parsedURL = urlparse(request.path)
 
         if parsedURL.path == "/mails":
-            sendListOfMailIdsToClient(request)
+            sendListOfEmailIdsToClient(request)
 
         if parsedURL.path == "/get/mail":
             sendEmailByIdToClient(request, parsedURL)
@@ -70,6 +98,7 @@ class MyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         writeEmailReceivedToDisk(getUniqueRecordId(emailRequestContentAsDictionary), emailRequestRawContent)
 
         sendBackResponseToClient(request, emailRequestContentAsDictionary.get('ConfigurationSetName'))
+
 
 def sendBackResponseToClient(request, configureSetsOption):
     if configureSetsOption is not None and configureSetsOption != "":
@@ -96,14 +125,43 @@ def displayReleventEmailDetailsOnTheConsole(emailRequestContentAsDictionary):
 
 
 def getEmailContentFor(emailId):
-    return ['Action=SendEmail&Version=2010-12-01&Source=localtest%40exocode.co.uk&Destination.ToAddresses.member.1=recipient%40example.com&Message.Subject.Data=Amazon+SES+test+%28AWS+SDK+for+Java%29&Message.Subject.Charset=UTF-8&Message.Body.Text.Data=This+email+was+sent+through+Amazon+SES+using+the+AWS+SDK+for+Java.&Message.Body.Text.Charset=UTF-8&Message.Body.Html.Data=%3Ch1%3EAmazon+SES+test+%28AWS+SDK+for+Java%29%3C%2Fh1%3E%3Cp%3EThis+email+was+sent+with+%3Ca+href%3D%27https%3A%2F%2Faws.amazon.com%2Fses%2F%27%3EAmazon+SES%3C%2Fa%3E+using+the+%3Ca+href%3D%27https%3A%2F%2Faws.amazon.com%2Fsdk-for-java%2F%27%3EAWS+SDK+for+Java%3C%2Fa%3E&Message.Body.Html.Charset=UTF-8']
+    global file
+
+    logInfo("Converting emailId to filename")
+    emailFilename = "{0}/{1}{2}".format(CACHE_FOLDER, emailId, ".eml")
+
+    try:
+        file = open(emailFilename, 'r')
+    except IOError as error:
+        logError("Error reading file {0}: {1}".format(emailFilename, error))
+        logError("Error reading file: " + emailFilename)
+        logError("Closing file and aborting...")
+        file.close()
+
+        return None
+    else:
+        emailContent = file.read()
+        logInfo("Fetching email content from file: " + emailFilename)
+        logDebug("Email contains: " + emailContent)
+        file.close()
+        logInfo("...finished sending email content.")
+        return emailContent
 
 
 def getListOfEmailIdsFromRespository():
-    return ['001-xx@b.com', '002-bb@c.com']
+    logInfo("Fetching all emails.")
+    allEmailsAsFiles = glob.glob(CACHE_FOLDER + '/*')
+
+    logInfo("Building list a list of emaild ids.")
+    emailIds=list()
+    for emailAsFile in allEmailsAsFiles:
+        emailId = os.path.splitext(os.path.basename(emailAsFile))[0].strip(" ")
+        emailIds.append(emailId)
+
+    return emailIds
 
 
-def sendListOfMailIdsToClient(request):
+def sendListOfEmailIdsToClient(request):
     sendSuccessfulResponse(request)
     emailIds = getListOfEmailIdsFromRespository()
     logInfo("Sending client list of email ids " + str(emailIds))
@@ -112,15 +170,17 @@ def sendListOfMailIdsToClient(request):
 
 
 def sendEmailByIdToClient(request, parsedURL):
+    sendSuccessfulResponse(request)
     queryString = parse_qs(parsedURL.query)
     emailId = queryString.get('emailId')[0]
     emailContent = getEmailContentFor(emailId)
-    sendSuccessfulResponse(request)
-    logInfo("Sending client email contents for emailId: " + emailId)
-    logDebug("Email content: " + str(emailContent))
-    request.wfile.write(emailContent)
-    logInfo("Finished sending.")
-
+    if emailContent is None:
+        logInfo("No email contents sent for emailId" + emailId)
+    else:
+        logInfo("Sending client email contents for emailId: " + emailId)
+        logDebug("Email content: " + str(emailContent))
+        request.wfile.write("[{0}]".format(emailContent))
+        logInfo("Finished sending.")
 
 def writeEmailReceivedToDisk(uniqueRecordId, emailRequestContent):
     logInfo("Writing email to disk")
@@ -151,10 +211,10 @@ def displayRawRequestDetailsOnTheConsole(request):
     logDebug("You have sent these headers: \n%s" % request.headers)
 
 
-
 def convertRawHttpRequestDataToString(request):
     contentLength = int(request.headers.getheader('content-length'))
     return request.rfile.read(contentLength)
+
 
 def sendSuccessfulResponse(request):
     request.send_response(200)
@@ -172,6 +232,9 @@ def sendFailureDueToConfigSetNotAllowed(request):
 
 def logDebug(message):
     log("[DEBUG] " + message)
+
+def logError(message):
+    log("[ERROR] " + message)
 
 def logInfo(message):
     log("[INFO] " + message)
