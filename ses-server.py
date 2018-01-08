@@ -41,6 +41,12 @@ CONFIG_SET_NOT_ALLOWED_RESPONSE = """<ErrorResponse xmlns="http://ses.amazonaws.
 
 class MyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
+    def do_GET(request):
+        """Respond to a GET request."""
+        sendSuccessfulResponse(request)
+        request.wfile.write(getListOfEmailsFromRespository())
+
+
     def do_POST(request):
         """Respond to a POST request."""
         emailRequestRawContent = convertRawHttpRequestDataToString(request)
@@ -54,12 +60,14 @@ class MyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
         sendBackResponseToClient(request, emailRequestContentAsDictionary.get('ConfigurationSetName'))
 
+def getListOfEmailsFromRespository():
+    return ['001-xx@b.com', '002-bb@c.com']
 
 def sendBackResponseToClient(request, configureSetsOption):
     if configureSetsOption is not None and configureSetsOption != "":
         sendFailureDueToConfigSetNotAllowed(request)
     else:
-        sendSuccessEmailSentResponse(request)
+        sendSuccessfulResponse(request)
         request.wfile.write(SENT_EMAIL_RESPONSE)
 
 
@@ -111,7 +119,7 @@ def convertRawHttpRequestDataToString(request):
     contentLength = int(request.headers.getheader('content-length'))
     return request.rfile.read(contentLength)
 
-def sendSuccessEmailSentResponse(request):
+def sendSuccessfulResponse(request):
     request.send_response(200)
     request.send_header('Content-type', 'text/xml')
     request.end_headers()
@@ -141,6 +149,13 @@ if __name__ == '__main__':
     server_class = BaseHTTPServer.HTTPServer
     httpd = server_class((HOST_NAME, PORT_NUMBER), MyHandler)
     logInfo("Server Starts - %s:%s" % (HOST_NAME, PORT_NUMBER))
+    logInfo("Kill process using: ")
+    logInfo("     $ python ses-server-wrapper.py stop")
+    logInfo("In case, unsuccessful, use this to find out process id: ")
+    logInfo("     $ netstat -tulpn | grep :9555")
+    logInfo("...and kill it manually: ")
+    logInfo("     $ kill -9 <pid>")
+
     try:
             httpd.serve_forever()
     except KeyboardInterrupt:
