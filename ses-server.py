@@ -76,6 +76,11 @@ class MyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
         parsedURL = urlparse(request.path)
 
+        if parsedURL.path == "/health":
+            logInfo("Sending health check response to client...")
+            sendSuccessfulResponse(request)
+            logInfo("...finished sending.")
+
         if parsedURL.path == "/mails":
             sendListOfEmailIdsToClient(request)
 
@@ -134,7 +139,6 @@ def getEmailContentFor(emailId):
         file = open(emailFilename, 'r')
     except IOError as error:
         logError("Error reading file {0}: {1}".format(emailFilename, error))
-        logError("Error reading file: " + emailFilename)
         logError("Closing file and aborting...")
         file.close()
 
