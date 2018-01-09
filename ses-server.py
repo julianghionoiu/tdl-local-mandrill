@@ -58,7 +58,7 @@ class MyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             emailIds=list()
             for emailAsFile in allEmailsAsFiles:
                 os.remove(emailAsFile)
-                emailId = os.path.splitext(os.path.basename(emailAsFile))[0]
+                emailId = os.path.basename(emailAsFile)
                 emailIds.append(emailId)
 
             if len(emailIds) == 0:
@@ -130,36 +130,34 @@ def displayReleventEmailDetailsOnTheConsole(emailRequestContentAsDictionary):
 
 
 def getEmailContentFor(emailId):
-    global file
+    global emailFile
 
     logInfo("Converting emailId to filename")
-    emailFilename = "{0}/{1}{2}".format(CACHE_FOLDER, emailId, ".eml")
+    emailFilename = "{0}/{1}".format(CACHE_FOLDER, emailId)
 
     try:
-        file = open(emailFilename, 'r')
+        emailFile = open(emailFilename, 'r')
     except IOError as error:
         logError("Error reading file {0}: {1}".format(emailFilename, error))
         logError("Closing file and aborting...")
-        file.close()
-
         return None
     else:
-        emailContent = file.read()
+        emailContent = emailFile.read()
         logInfo("Fetching email content from file: " + emailFilename)
         logDebug("Email contains: " + emailContent)
-        file.close()
         logInfo("...finished sending email content.")
+        emailFile.close()
         return emailContent
 
 
 def getListOfEmailIdsFromRespository():
     logInfo("Fetching all emails.")
-    allEmailsAsFiles = glob.glob(CACHE_FOLDER + '/*')
+    allEmailsAsFiles = sorted(glob.glob(CACHE_FOLDER + '/*'))
 
     logInfo("Building list a list of emaild ids.")
     emailIds=list()
     for emailAsFile in allEmailsAsFiles:
-        emailId = os.path.splitext(os.path.basename(emailAsFile))[0].strip(" ")
+        emailId = os.path.basename(emailAsFile)
         emailIds.append(emailId)
 
     return emailIds
@@ -182,15 +180,15 @@ def sendEmailByIdToClient(request, parsedURL):
         logInfo("No email contents sent for emailId" + emailId)
     else:
         logInfo("Sending client email contents for emailId: " + emailId)
-        logDebug("Email content: " + str(emailContent))
-        request.wfile.write("[{0}]".format(emailContent))
+        logDebug("Email content: ['{0}']".format(emailContent))
+        request.wfile.write("['{0}']".format(emailContent))
         logInfo("Finished sending.")
 
 def writeEmailReceivedToDisk(uniqueRecordId, emailRequestContent):
     logInfo("Writing email to disk")
     logInfo("Unique record id: " + uniqueRecordId)
 
-    emailFileName = '{0}/{1}.eml'.format(CACHE_FOLDER, uniqueRecordId)
+    emailFileName = '{0}/{1}'.format(CACHE_FOLDER, uniqueRecordId)
     emailFile = open(emailFileName, 'w')
     emailFile.write(emailRequestContent)
     emailFile.close()
@@ -203,7 +201,8 @@ def getUniqueRecordId(emailRequestContentAsDictionary):
     emailTo = emailRequestContentAsDictionary.get('Destination.ToAddresses.member.1')
 
     newIndex = len(os.listdir(CACHE_FOLDER)) + 1
-    return "{0: #04d}-{1}-{2}".format(newIndex, emailFrom[0], emailTo[0])
+     
+    return "{0:#04d}-{1}-{2}".format(newIndex, emailFrom[0], emailTo[0])
 
 
 def displayRawRequestDetailsOnTheConsole(request):
