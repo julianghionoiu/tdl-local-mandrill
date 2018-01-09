@@ -14,7 +14,7 @@ from urlparse import parse_qs
 from urlparse import urlparse
 
 HOST_NAME = 'localhost' # !!!REMEMBER TO CHANGE THIS!!!
-PORT_NUMBER = 9555 # Maybe set this to 9000.
+PORT_NUMBER = 9543 # Maybe set this to 9000.
 
 SCRIPT_FOLDER = os.path.dirname(os.path.realpath(__file__))
 CACHE_FOLDER = os.path.join(SCRIPT_FOLDER, ".emailRepository")
@@ -255,7 +255,7 @@ if __name__ == '__main__':
     logInfo("Kill process using: ")
     logInfo("     $ python ses-server-wrapper.py stop")
     logInfo("In case, unsuccessful, use this to find out process id: ")
-    logInfo("     $ netstat -tulpn | grep :9555")
+    logInfo("     $ netstat -tulpn | grep :9543")
     logInfo("...and kill it manually: ")
     logInfo("     $ kill -9 <pid>")
 
