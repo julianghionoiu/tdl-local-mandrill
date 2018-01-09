@@ -55,14 +55,18 @@ def wait_until_port_is_open(port, delay):
 
 
 def kill_process(pid_file):
-    f = open(pid_file, "r")
     try:
-        pid_str = f.read()
-        print "Kill process with pid: " + pid_str
-        os.kill(int(pid_str), signal.SIGTERM)
-    except Exception:
-        f.close()
-        os.remove(pid_file)
+        f = open(pid_file, "r")
+        try:
+            pid_str = f.read()
+            print "Kill process with pid: " + pid_str
+            os.kill(int(pid_str), signal.SIGTERM)
+        except Exception:
+            f.close()
+            os.remove(pid_file)
+    except IOError as error:
+        print "Error: {0}, when trying to open {1}...".format(error, pid_file)
+        print "The process never existed or may not exist anymore, let's continue..."
 
 
 if __name__ == "__main__":
