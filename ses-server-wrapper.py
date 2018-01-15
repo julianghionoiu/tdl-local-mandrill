@@ -18,7 +18,8 @@ def run(command):
     pid_file = os.path.join(CACHE_FOLDER, "pid-" + str(port))
 
     if command == "start":
-        run_python(python_file, port, pid_file)
+        print "Will run and detach from CLI and return to prompt..."
+        run_python(python_file, port, pid_file, False)
         wait_until_port_is_open(port, 5, 5)
 
     if command == "status":
@@ -28,9 +29,17 @@ def run(command):
         kill_process(pid_file)
         wait_until_port_is_closed(port, 5, 5)
 
+    if command == "console":
+        print "Entered console mode (blocking, Ctrl-C to breakout)..."
+        run_python(python_file, port, pid_file, True)
 
-def run_python(python_path, port, pid_file):
-    proc = subprocess.Popen(["python", python_path, str(port), "&",], cwd=SCRIPT_FOLDER)
+
+def run_python(python_path, port, pid_file, consoleMode):
+    if consoleMode:
+        proc = subprocess.call(["python", python_path, str(port)], cwd=SCRIPT_FOLDER)
+    else:
+        proc = subprocess.Popen(["python", python_path, str(port), "&",], cwd=SCRIPT_FOLDER)
+
     f = open(pid_file, "w")
     f.write(str(proc.pid))
     f.close()
