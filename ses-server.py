@@ -8,6 +8,7 @@ import time
 import BaseHTTPServer
 import os
 import glob
+import json
 
 from __builtin__ import list
 from urlparse import parse_qs
@@ -100,7 +101,8 @@ class MyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
         displayReleventEmailDetailsOnTheConsole(emailRequestContentAsDictionary)
 
-        writeEmailReceivedToDisk(getUniqueRecordId(emailRequestContentAsDictionary), emailRequestRawContent)
+        emailRequestContentAsJsonString = json.dumps(emailRequestContentAsDictionary, indent=4, sort_keys=True)
+        writeEmailReceivedToDisk(getUniqueRecordId(emailRequestContentAsDictionary), emailRequestContentAsJsonString)
 
         sendBackResponseToClient(request, emailRequestContentAsDictionary.get('ConfigurationSetName'))
 
@@ -180,8 +182,8 @@ def sendEmailByIdToClient(request, parsedURL):
         logInfo("No email contents sent for emailId" + emailId)
     else:
         logInfo("Sending client email contents for emailId: " + emailId)
-        logDebug("Email content: ['{0}']".format(emailContent))
-        request.wfile.write("['{0}']".format(emailContent))
+        logDebug(emailContent)
+        request.wfile.write(emailContent)
         logInfo("Finished sending.")
 
 def writeEmailReceivedToDisk(uniqueRecordId, emailRequestContent):
