@@ -5,14 +5,14 @@
 # There should also be an endpoint that allows the retrieval of the latest N messages
 
 import time
-import BaseHTTPServer
+import http.server
 import os
 import glob
 import json
 
-from __builtin__ import list
-from urlparse import parse_qs
-from urlparse import urlparse
+from builtins import list
+from urllib.parse import parse_qs
+from urllib.parse import urlparse
 
 HOST_NAME = 'localhost' # !!!REMEMBER TO CHANGE THIS!!!
 PORT_NUMBER = 9543 # Maybe set this to 9000.
@@ -42,7 +42,7 @@ CONFIG_SET_NOT_ALLOWED_RESPONSE = """
                             </ErrorResponse>
                        """
 
-class MyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
+class MyHandler(http.server.BaseHTTPRequestHandler):
 
     def do_DELETE(request):
         """Respond to a DELETE request."""
@@ -245,13 +245,13 @@ def logInfo(message):
     log("[INFO] " + message)
 
 def log(message):
-    print time.asctime(), message
+    print(time.asctime(), message)
 
 if __name__ == '__main__':
     if not os.path.exists(CACHE_FOLDER):
         os.mkdir(CACHE_FOLDER)
 
-    server_class = BaseHTTPServer.HTTPServer
+    server_class = http.server.HTTPServer
     httpd = server_class((HOST_NAME, PORT_NUMBER), MyHandler)
     logInfo("Server Starts - %s:%s" % (HOST_NAME, PORT_NUMBER))
     logInfo("Kill process using: ")
