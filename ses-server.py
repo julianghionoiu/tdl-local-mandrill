@@ -112,7 +112,7 @@ def sendBackResponseToClient(request, configureSetsOption):
         sendFailureDueToConfigSetNotAllowed(request)
     else:
         sendSuccessfulResponse(request)
-        request.wfile.write(SENT_EMAIL_RESPONSE)
+        request.wfile.write(bytes(SENT_EMAIL_RESPONSE))
         logInfo("Finished sending.")
 
 
@@ -169,7 +169,7 @@ def sendListOfEmailIdsToClient(request):
     sendSuccessfulResponse(request)
     emailIds = getListOfEmailIdsFromRespository()
     logInfo("Sending client list of email ids " + str(emailIds))
-    request.wfile.write(emailIds)
+    request.wfile.write(bytes(emailIds))
     logInfo("Finished sending.")
 
 
@@ -182,8 +182,8 @@ def sendEmailByIdToClient(request, parsedURL):
         logInfo("No email contents sent for emailId" + emailId)
     else:
         logInfo("Sending client email contents for emailId: " + emailId)
-        logDebug(emailContent)
-        request.wfile.write(emailContent)
+        logDebug("Email content: ['{0}']".format(emailContent))
+        request.wfile.write(bytes("['{0}']".format(emailContent)))
         logInfo("Finished sending.")
 
 def writeEmailReceivedToDisk(uniqueRecordId, emailRequestContent):
@@ -192,7 +192,7 @@ def writeEmailReceivedToDisk(uniqueRecordId, emailRequestContent):
 
     emailFileName = '{0}/{1}'.format(CACHE_FOLDER, uniqueRecordId)
     emailFile = open(emailFileName, 'w')
-    emailFile.write(emailRequestContent)
+    emailFile.write(bytes(emailRequestContent))
     emailFile.close()
 
     logInfo("Email has been successfully saved at " + emailFileName)
@@ -233,7 +233,7 @@ def sendFailureDueToConfigSetNotAllowed(request):
     request.send_header('Content-Length', '310')
     request.end_headers()
 
-    request.wfile.write(CONFIG_SET_NOT_ALLOWED_RESPONSE)
+    request.wfile.write(bytes(CONFIG_SET_NOT_ALLOWED_RESPONSE))
 
 def logDebug(message):
     log("[DEBUG] " + message)
