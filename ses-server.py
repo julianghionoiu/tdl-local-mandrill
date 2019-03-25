@@ -217,7 +217,7 @@ def displayRawRequestDetailsOnTheConsole(request):
 
 
 def convertRawHttpRequestDataToString(request):
-    contentLength = int(request.headers.getheader('content-length'))
+    contentLength = int(request.headers.get_all('content-length'))
     return request.rfile.read(contentLength)
 
 
