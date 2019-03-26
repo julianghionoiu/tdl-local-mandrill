@@ -168,8 +168,9 @@ def getListOfEmailIdsFromRespository():
 def sendListOfEmailIdsToClient(request):
     sendSuccessfulResponse(request)
     emailIds = getListOfEmailIdsFromRespository()
-    logInfo("Sending client list of email ids " + str(emailIds))
-    request.wfile.write(bytes(emailIds))
+    emailIds_as_string = str(emailIds)
+    logInfo("Sending client list of email ids " + emailIds_as_string)
+    request.wfile.write(emailIds_as_string.encode("utf-8"))
     logInfo("Finished sending.")
 
 
@@ -247,7 +248,7 @@ def sendFailureDueToConfigSetNotAllowed(request):
     request.send_header('Content-Length', '310')
     request.end_headers()
 
-    request.wfile.write(bytes(CONFIG_SET_NOT_ALLOWED_RESPONSE))
+    request.wfile.write(CONFIG_SET_NOT_ALLOWED_RESPONSE.encode("utf-8"))
 
 def logDebug(message):
     log("[DEBUG] " + message)
