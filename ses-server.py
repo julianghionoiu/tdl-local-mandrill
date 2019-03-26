@@ -183,9 +183,8 @@ def sendEmailByIdToClient(request, parsedURL):
         logInfo("No email contents sent for emailId" + emailId)
     else:
         logInfo("Sending client email contents for emailId: " + emailId)
-        logDebug("Email content: ['{0}']".format(emailContent))
-        email_content_as_string = "['{0}']".format(emailContent)
-        request.wfile.write(email_content_as_string.encode("utf-8"))
+        logDebug(emailContent)
+        request.wfile.write(emailContent.encode("utf-8"))
         logInfo("Finished sending.")
 
 def writeEmailReceivedToDisk(uniqueRecordId, emailRequestContent):
