@@ -112,7 +112,7 @@ def sendBackResponseToClient(request, configureSetsOption):
         sendFailureDueToConfigSetNotAllowed(request)
     else:
         sendSuccessfulResponse(request)
-        request.wfile.write(bytes(SENT_EMAIL_RESPONSE))
+        request.wfile.write(SENT_EMAIL_RESPONSE.encode("utf-8"))
         logInfo("Finished sending.")
 
 
@@ -192,15 +192,22 @@ def writeEmailReceivedToDisk(uniqueRecordId, emailRequestContent):
 
     emailFileName = '{0}/{1}'.format(CACHE_FOLDER, uniqueRecordId)
     emailFile = open(emailFileName, 'w')
-    emailFile.write(bytes(emailRequestContent))
+
+    emailFile.write(emailRequestContent)
     emailFile.close()
 
     logInfo("Email has been successfully saved at " + emailFileName)
 
 
+def get_value_or_default(map_object, key, default_value='<not specified>'):
+    if map_object is None:
+        return [default_value]
+    else:
+        return [map_object.get(key)]
+
 def getUniqueRecordId(emailRequestContentAsDictionary):
-    emailFrom = emailRequestContentAsDictionary.get('Source')
-    emailTo = emailRequestContentAsDictionary.get('Destination.ToAddresses.member.1')
+    emailFrom = get_value_or_default(emailRequestContentAsDictionary, 'Source')
+    emailTo = get_value_or_default(emailRequestContentAsDictionary, 'Destination.ToAddresses.member.1')
 
     newIndex = len(os.listdir(CACHE_FOLDER)) + 1
      
@@ -223,7 +230,9 @@ def convertRawHttpRequestDataToString(request):
         content_length = 0
     else:
         content_length = int(raw_content_length[0])
-    return request.rfile.read(content_length)
+
+    bytes_read = request.rfile.read(content_length)
+    return bytes_read.decode("utf-8")
 
 
 def sendSuccessfulResponse(request):
