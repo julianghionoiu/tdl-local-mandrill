@@ -217,8 +217,13 @@ def displayRawRequestDetailsOnTheConsole(request):
 
 
 def convertRawHttpRequestDataToString(request):
-    contentLength = int(request.headers.get_all('content-length'))
-    return request.rfile.read(contentLength)
+    raw_content_length = request.headers.get_all('content-length')
+
+    if raw_content_length is None:
+        content_length = 0
+    else:
+        content_length = int(raw_content_length[0])
+    return request.rfile.read(content_length)
 
 
 def sendSuccessfulResponse(request):
