@@ -36,9 +36,9 @@ def run(command):
 
 def run_python(python_path, port, pid_file, consoleMode):
     if consoleMode:
-        proc = subprocess.call(["python", python_path, str(port)], cwd=SCRIPT_FOLDER)
+        proc = subprocess.call(["python3", python_path, str(port)], cwd=SCRIPT_FOLDER)
     else:
-        proc = subprocess.Popen(["python", python_path, str(port), "&",], cwd=SCRIPT_FOLDER)
+        proc = subprocess.Popen(["python3", python_path, str(port), "&",], cwd=SCRIPT_FOLDER)
 
     f = open(pid_file, "w")
     f.write(str(proc.pid))
